@@ -22,4 +22,8 @@ static inline uint16_t vga_entry(unsigned char uc, uint8_t color) {
     return (uint16_t)uc | (uint16_t)color << 8;
 }
 
+static inline size_t vga_index(const size_t x, const size_t y) {
+    return y * VGA_WIDTH + x;
+}
+
 #endif

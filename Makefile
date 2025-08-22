@@ -19,8 +19,9 @@ LINKER_LD=linker.ld
 KERNEL_FILENAME=krazsh.bin
 KERNEL_BIN=$(BUILD_DIR)/$(KERNEL_FILENAME)
 
-CFLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Wextra
-LDFLAGS=-T $(LINKER_LD) -ffreestanding -O2 -nostdlib -lgcc
+OO=-O2
+CFLAGS=-std=gnu99 -ffreestanding $(OO) -Wall -Wextra
+LDFLAGS=-T $(LINKER_LD) -ffreestanding $(OO) -nostdlib -lgcc
 
 all: $(KERNEL_BIN)
 
