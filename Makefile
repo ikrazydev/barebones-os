@@ -4,12 +4,12 @@ AS=$(CROSS)-as
 LD=$(CROSS)-gcc
 QEMU=qemu-system-i386
 
-BUILD_DIR=build
 ISO_DIR=isodir
 ISO_BOOT=$(ISO_DIR)/boot
 ISO_GRUB=$(ISO_DIR)/boot/grub
 ISO_IMAGE=$(ISO_DIR)/myos.iso
 
+BUILD_DIR=build
 C_SRC=kernel.c
 C_OBJS=$(patsubst %.c, $(BUILD_DIR)/%.o, $(C_SRC))
 AS_SRC=boot.s

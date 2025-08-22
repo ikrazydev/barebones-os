@@ -22,10 +22,16 @@ static inline uint16_t vga_entry(unsigned char uc, uint8_t color) {
 }
 
 static inline uint8_t inb(uint16_t port) {
-#ifdef __GNUC__ // Doesn't work on other compilers, potentially
+#ifdef __GNUC__ // Different syntax for other compilers
     uint8_t ret;
-    __asm__ volatile ("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    __asm__ volatile ("inb %w1, %b0" : "=a"(ret) : "Nd"(port) : "memory");
     return ret;
+#endif // __GNUC__
+}
+
+static inline void outb(uint16_t port, uint8_t value) {
+#ifdef __GNUC__
+    __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
 #endif // __GNUC__
 }
 
@@ -69,6 +75,18 @@ void terminal_putentryat(char c, uint8_t color, size_t x, size_t y) {
     const size_t index = y * VGA_WIDTH + x;
     terminal_buffer[index] = vga_entry(c, color);
 }
+void terminal_cursormove(size_t x, size_t y) {
+    uint16_t pos = y * VGA_WIDTH + x;
+
+    outb(0x3D4, 0x0F);
+    outb(0x3D5, (uint8_t)(pos & 0x00FF));
+    outb(0x3D4, 0x0E);
+    outb(0x3D5, (uint8_t)((pos & 0xFF00) >> 8));
+}
+
+void terminal_updatecursor(void) {
+    terminal_cursormove(terminal_column, terminal_row);
+}
 
 void terminal_shiftdown(void) {
     terminal_row--;
@@ -100,6 +118,7 @@ void terminal_erase(void) {
     }
 
     terminal_putentryat(' ', terminal_color, terminal_column, terminal_row);
+    terminal_updatecursor();
 }
 
 void terminal_putchar(char c) {
@@ -107,6 +126,8 @@ void terminal_putchar(char c) {
     if (++terminal_column == VGA_WIDTH) {
         terminal_newline();
     }
+
+    terminal_updatecursor();
 }
 
 void terminal_write(const char* data, size_t size) {
