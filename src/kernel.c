@@ -11,7 +11,7 @@
 #endif // __linux__
 
 void welcome(void) {
-    for (size_t i = 0; i <= 100; i += 1) {
+    for (int i = -2; i <= 50; i += 1) {
         terminal_writestring("Booting... ");
         terminal_writenumber(i);
         terminal_writestring("%\n");

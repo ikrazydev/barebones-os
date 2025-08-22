@@ -134,7 +134,7 @@ void terminal_shiftdown(void) {
     if (++top_line == MAX_LINES - VGA_HEIGHT) {
         top_line--; row--;
 
-        memmove(lines, lines[1], MAX_LINES * VGA_WIDTH * sizeof(uint16_t));
+        memmove(lines, lines[1], (MAX_LINES - 1) * VGA_WIDTH * sizeof(uint16_t));
         memmove(line_lengths, &line_lengths[1], MAX_LINES * sizeof(size_t));
 
         for (size_t i = 0; i < VGA_WIDTH; i++) {
@@ -215,15 +215,20 @@ void terminal_writenumber(int num) {
     char temp[16];
     char* tp = temp;
 
-    while (num > 0) {
+    if (num < 0) {
+        terminal_putchar('-');
+        num = -num;
+    }
+
+    do {
         int digit = num % 10;
         *tp++ = digit;
 
         num /= 10;
-    }
+    } while (num > 0);
 
     while (tp > temp) {
         char ch = *--tp + '0';
-        terminal_write(&ch, 1);
+        terminal_putchar(ch);
     }
 }
