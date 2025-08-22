@@ -2,56 +2,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(__linux__)
-#error "This is not a cross-compiler"
-#endif // __linux__
-
-enum vga_color {
-    VGA_COLOR_BLACK = 0,
-    VGA_COLOR_GREEN = 2,
-    VGA_COLOR_LIGHT_GRAY = 7,
-    VGA_COLOR_WHITE = 15,
-};
-
-static inline uint8_t vga_entry_color(enum vga_color fg, enum vga_color bg) {
-    return fg | bg << 4;
-}
-
-static inline uint16_t vga_entry(unsigned char uc, uint8_t color) {
-    return (uint16_t)uc | (uint16_t)color << 8;
-}
-
-static inline uint8_t inb(uint16_t port) {
-#ifdef __GNUC__ // Different syntax for other compilers
-    uint8_t ret;
-    __asm__ volatile ("inb %w1, %b0" : "=a"(ret) : "Nd"(port) : "memory");
-    return ret;
-#endif // __GNUC__
-}
-
-static inline void outb(uint16_t port, uint8_t value) {
-#ifdef __GNUC__
-    __asm__ volatile ("outb %b0, %w1" : : "a"(value), "Nd"(port) : "memory");
-#endif // __GNUC__
-}
-
-size_t strlen(const char* str) {
-    size_t len = 0;
-    while (str[len])
-        len++;
-    return len;
-}
-
-void memmove(void* dest, const void* src, size_t size) {
-    for (size_t i = 0; i < size; i++) {
-        uint8_t *dest_ptr = (uint8_t*)dest + i, *src_ptr = (uint8_t*)src + i;
-        *dest_ptr = *src_ptr;
-    }
-}
-
-#define VGA_WIDTH 80
-#define VGA_HEIGHT 25
-#define VGA_MEMORY 0xB8000
+#include "asm.h"
+#include "std.h"
+#include "vga.h"
 
 size_t terminal_row;
 size_t terminal_column;
@@ -75,6 +28,7 @@ void terminal_putentryat(char c, uint8_t color, size_t x, size_t y) {
     const size_t index = y * VGA_WIDTH + x;
     terminal_buffer[index] = vga_entry(c, color);
 }
+
 void terminal_cursormove(size_t x, size_t y) {
     uint16_t pos = y * VGA_WIDTH + x;
 
@@ -165,48 +119,5 @@ void terminal_writenumber(int num) {
     while (tp > temp) {
         char ch = *--tp + '0';
         terminal_write(&ch, 1);
-    }
-}
-
-const char scancode_to_ascii[128] = {
-    0,  27, '1','2','3','4','5','6','7','8','9','0','-','=', '\b',
-    '\t','q','w','e','r','t','y','u','i','o','p','[',']','\n',0,
-    'a','s','d','f','g','h','j','k','l',';','\'','`',0,'\\',
-    'z','x','c','v','b','n','m',',','.','/',0, '*',0, ' ',
-};
-
-bool scancode_states[128] = { false };
-
-void welcome(void) {
-    for (size_t i = 1; i <= 25; i++) {
-        terminal_writestring("Hello, OS World ");
-        terminal_writenumber(i);
-        terminal_writestring(".\n");
-    }
-    
-    terminal_writestring("Welcome to KrazShell\n");
-    terminal_writestring("Time to use your keyboard.\n");
-}
-
-void kernel_main(void) {
-    terminal_initialize();
-    welcome();
-
-    terminal_writestring("> ");
-
-    while (1) {
-        uint8_t sc = inb(0x60);
-        if (sc & 0x80) {
-            scancode_states[sc & 0x7F] = false;
-            continue;
-        }
-        
-        char c = scancode_to_ascii[sc];
-        if (!c) continue;
-
-        if (!scancode_states[sc]) {
-            terminal_write(&c, 1);
-            scancode_states[sc] = true;
-        }
     }
 }

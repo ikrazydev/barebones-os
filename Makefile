@@ -6,22 +6,32 @@ QEMU=qemu-system-i386
 
 ISO_DIR=isodir
 ISO_BOOT=$(ISO_DIR)/boot
-ISO_GRUB=$(ISO_DIR)/boot/grub
-ISO_IMAGE=$(ISO_DIR)/myos.iso
+ISO_GRUB=$(ISO_BOOT)/grub
+ISO_IMAGE=$(ISO_DIR)/krazsh.iso
 
+SRC_DIR=src
 BUILD_DIR=build
-C_SRC=kernel.c
-C_OBJS=$(patsubst %.c, $(BUILD_DIR)/%.o, $(C_SRC))
+C_SRC=kernel.c terminal.c keyboard.c std.c
 AS_SRC=boot.s
-AS_OBJS=$(patsubst %.s, $(BUILD_DIR)/%.o, $(AS_SRC))
-OBJS=$(C_OBJS) $(AS_OBJS)
+OBJS=$(addprefix $(BUILD_DIR)/, $(C_SRC:.c=.o) $(AS_SRC:.s=.o))
+
 LINKER_LD=linker.ld
-KERNEL_BIN=$(BUILD_DIR)/myos.bin
+KERNEL_FILENAME=krazsh.bin
+KERNEL_BIN=$(BUILD_DIR)/$(KERNEL_FILENAME)
 
 CFLAGS=-std=gnu99 -ffreestanding -O2 -Wall -Wextra
 LDFLAGS=-T $(LINKER_LD) -ffreestanding -O2 -nostdlib -lgcc
 
 all: $(KERNEL_BIN)
+
+$(KERNEL_BIN): $(OBJS) $(LINKER_LD)
+	$(LD) $(LDFLAGS) $(OBJS) -o $@
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.s | $(BUILD_DIR)
+	$(AS) $< -o $@
+
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+	$(CC) -c $< -o $@ $(CFLAGS)
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -29,17 +39,8 @@ $(BUILD_DIR):
 $(ISO_DIR):
 	mkdir -p $(ISO_BOOT) $(ISO_GRUB)
 
-$(AS_OBJS): $(AS_SRC) | $(BUILD_DIR)
-	$(AS) $< -o $@
-
-$(C_OBJS): $(C_SRC) | $(BUILD_DIR)
-	$(CC) -c $< -o $@ $(CFLAGS)
-
-$(KERNEL_BIN): $(OBJS) $(LINKER_LD)
-	$(LD) $(LDFLAGS) $(OBJS) -o $(KERNEL_BIN)
-
 prepare-iso: $(KERNEL_BIN) | $(ISO_DIR)
-	cp $(KERNEL_BIN) $(ISO_BOOT)/myos.bin
+	cp $(KERNEL_BIN) $(ISO_BOOT)/$(KERNEL_FILENAME)
 	cp grub.cfg $(ISO_GRUB)/grub.cfg
 
 iso: prepare-iso
