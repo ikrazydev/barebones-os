@@ -115,7 +115,7 @@ void terminal_movedown(void) {
 }
 
 void terminal_scrolldown(void) {
-    if (top_line < MAX_LINES - VGA_HEIGHT - 1) {
+    if (top_line <= max_row - VGA_HEIGHT) {
         top_line++;
     }
 
@@ -159,13 +159,13 @@ void terminal_newline(void) {
 }
 
 void terminal_erase(void) {
-    if (column == 0) {
-        if (row != 0) {
-            row--;
-            column = line_lengths[row];
-        }
+    if (column == 0 && row != 0) {
+        row--; max_row--;
+        column = line_lengths[row];
+
+        terminal_scrollup();
     } else {
-        column--;
+        column--; line_lengths[row]--;
     }
 
     saved_column = column;
@@ -211,7 +211,7 @@ void terminal_writestring(const char* data) {
     terminal_write(data, strlen(data));
 }
 
-void terminal_writenumber(int num) {
+void terminal_writeint(int num) {
     char temp[16];
     char* tp = temp;
 
@@ -223,7 +223,6 @@ void terminal_writenumber(int num) {
     do {
         int digit = num % 10;
         *tp++ = digit;
-
         num /= 10;
     } while (num > 0);
 

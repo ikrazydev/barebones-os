@@ -11,9 +11,9 @@
 #endif // __linux__
 
 void welcome(void) {
-    for (int i = -2; i <= 50; i += 1) {
+    for (int i = -2; i <= 100; i += 2) {
         terminal_writestring("Booting... ");
-        terminal_writenumber(i);
+        terminal_writeint(i);
         terminal_writestring("%\n");
     }
 
@@ -58,7 +58,7 @@ void read_key(void) {
     }
 
     if (sc & 0x80) {
-        sc_states[sc & 0x7F] = false;
+        sc_states[sc & SC_MAX] = false;
         return;
     }
 
@@ -68,7 +68,10 @@ void read_key(void) {
     if (!sc_states[sc]) {
         sc_states[sc] = true;
 
-        if (!c) return;
+        if (!c || is_ctrl_down() || is_alt_down()) {
+            return;
+        }
+
         terminal_write(&c, 1);
     }
 }
