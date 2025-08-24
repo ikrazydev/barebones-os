@@ -14,6 +14,14 @@ enum vga_color {
     VGA_COLOR_WHITE = 15,
 };
 
+static inline char vga_extract_char(const uint16_t entry) {
+    return (char)(entry & 0x00FF);
+}
+
+static inline enum vga_color vga_extract_color(const uint16_t entry) {
+    return (enum vga_color)(entry & 0xFF00 >> 8);
+}
+
 static inline uint8_t vga_entry_color(enum vga_color fg, enum vga_color bg) {
     return fg | bg << 4;
 }

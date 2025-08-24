@@ -42,11 +42,16 @@ static inline size_t terminal_vgaindex(const size_t x, const size_t y) {
     return (y - top_line) * VGA_WIDTH + x;
 }
 
-void terminal_putentryat(const char c, const uint8_t color, const size_t x, const size_t y) {
-    lines[y][x] = vga_entry(c, color);
-
+void terminal_putentryat_uint(const uint16_t entry, const size_t x, const size_t y) {
+    lines[y][x] = entry;
+    
     const size_t index = terminal_vgaindex(x, y);
     vga_buffer[index] = lines[y][x];
+}
+
+void terminal_putentryat(const char c, const uint8_t color, const size_t x, const size_t y) {
+    uint16_t entry = vga_entry(c, color);
+    terminal_putentryat_uint(entry, x, y);
 }
 
 void terminal_vgacursormove(const uint16_t pos) {
@@ -66,8 +71,12 @@ void terminal_updatecursor(void) {
 }
 
 void terminal_updatevga(void) {
-    memmove(vga_buffer, lines[top_line], VGA_HEIGHT * VGA_WIDTH * sizeof(uint16_t));
+    memcpy(vga_buffer, lines[top_line], VGA_HEIGHT * VGA_WIDTH * sizeof(uint16_t));
     terminal_updatecursor();
+}
+
+void terminal_updateline(size_t line) {
+    memcpy(vga_buffer + (line-top_line) * VGA_WIDTH, lines[line], VGA_WIDTH);
 }
 
 void terminal_moveleft(void) {
@@ -134,8 +143,8 @@ void terminal_shiftdown(void) {
     if (++top_line == MAX_LINES - VGA_HEIGHT) {
         top_line--; row--;
 
-        memmove(lines, lines[1], (MAX_LINES - 1) * VGA_WIDTH * sizeof(uint16_t));
-        memmove(line_lengths, &line_lengths[1], MAX_LINES * sizeof(size_t));
+        memcpy(lines, lines[1], (MAX_LINES - 1) * VGA_WIDTH * sizeof(uint16_t));
+        memcpy(&line_lengths, &line_lengths[1], MAX_LINES * sizeof(size_t));
 
         for (size_t i = 0; i < VGA_WIDTH; i++) {
             lines[MAX_LINES-1][i] = vga_entry(' ', color);
@@ -155,6 +164,7 @@ void terminal_newline(void) {
 
     max_row = row;
     line_lengths[row] = 0;
+
     terminal_updatecursor();
 }
 
@@ -174,18 +184,32 @@ void terminal_erase(void) {
     terminal_updatecursor();
 }
 
-void terminal_putchar(char c) {
-    line_lengths[row]++;
+void terminal_shiftright() {
+    size_t i = row;
+    uint16_t last_ch;
 
-    // TODO: characters will be replaced if cursor is not at the end of the line
-    // I'm too lazy to implement this right now,
-    // especially considering you have to keep track of line overflows
+    while (line_lengths[i] == VGA_WIDTH && i < MAX_LINES) {
+        last_ch = lines[i][VGA_WIDTH-1];
+
+        memmove(&lines[i][1], &lines[i][0], (VGA_WIDTH - 1) * sizeof(uint16_t));
+        terminal_updateline(i);
+
+        terminal_putentryat_uint(last_ch, 0, i);
+        i++;
+    }
+
+    line_lengths[i]++;
+    memmove(&lines[i][column+1], &lines[i][column], (line_lengths[i] - column) * sizeof(uint16_t));
+    terminal_updateline(i);
+}
+
+void terminal_putchar(char c) {
+    terminal_shiftright();
 
     terminal_putentryat(c, color, column, row);
     if (++column == VGA_WIDTH) {
         terminal_newline();
     }
-
     saved_column = column;
 
     terminal_updatecursor();
