@@ -80,6 +80,9 @@ void kernel_main(void) {
     terminal_initialize();
     welcome();
 
+    terminal_writestring("Time to write a big long message that would fill up these 80 characters, I guess.");
+    terminal_writestring("Time to write a big long message that would fill up these 80 characters.\n");
+
     terminal_writestring("> ");
 
     while (true) {

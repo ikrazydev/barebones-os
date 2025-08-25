@@ -76,7 +76,7 @@ void terminal_updatevga(void) {
 }
 
 void terminal_updateline(size_t line) {
-    memcpy(vga_buffer + (line-top_line) * VGA_WIDTH, lines[line], VGA_WIDTH);
+    memmove(vga_buffer + (line-top_line) * VGA_WIDTH, lines[line], VGA_WIDTH * sizeof(uint16_t));
 }
 
 void terminal_moveleft(void) {
@@ -156,16 +156,24 @@ void terminal_shiftdown(void) {
     terminal_updatevga();
 }
 
-void terminal_newline(void) {
-    column = 0; saved_column = 0;
-    if (++row >= VGA_HEIGHT) {
+size_t terminal_newline_at(size_t r) {
+    if (++r >= VGA_HEIGHT) {
         terminal_shiftdown();
     }
 
-    max_row = row;
-    line_lengths[row] = 0;
+    max_row = (max_row + 1) % MAX_LINES;
+    line_lengths[r] = 0;
 
-    terminal_updatecursor();
+    return r;
+}
+
+void terminal_newline(void) {
+    if (++row == MAX_LINES) {
+        terminal_shiftdown();
+        row--;
+    }
+    column = 0; saved_column = 0;
+    max_row = max_row < MAX_LINES-1 ? max_row + 1 : max_row;
 }
 
 void terminal_erase(void) {
@@ -184,35 +192,18 @@ void terminal_erase(void) {
     terminal_updatecursor();
 }
 
-void terminal_shiftright() {
-    size_t i = row;
-    uint16_t last_ch;
-
-    while (line_lengths[i] == VGA_WIDTH && i < MAX_LINES) {
-        last_ch = lines[i][VGA_WIDTH-1];
-
-        memmove(&lines[i][1], &lines[i][0], (VGA_WIDTH - 1) * sizeof(uint16_t));
-        terminal_updateline(i);
-
-        terminal_putentryat_uint(last_ch, 0, i);
-        i++;
-    }
-
-    line_lengths[i]++;
-    memmove(&lines[i][column+1], &lines[i][column], (line_lengths[i] - column) * sizeof(uint16_t));
-    terminal_updateline(i);
-}
-
-void terminal_putchar(char c) {
-    terminal_shiftright();
-
+void _terminal_shiftright(char c) {
     terminal_putentryat(c, color, column, row);
     if (++column == VGA_WIDTH) {
         terminal_newline();
+    } else {
+        line_lengths[row]++;
     }
-    saved_column = column;
-
     terminal_updatecursor();
+}
+
+void terminal_putchar(char c) {
+    _terminal_shiftright(c);
 }
 
 void terminal_write(const char* data, size_t size) {
